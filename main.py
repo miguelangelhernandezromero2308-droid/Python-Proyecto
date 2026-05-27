@@ -67,8 +67,7 @@ def listar_factura (id: int):
             return factura
         
 @app.post("/facturas/{cliente_id}", response_model=Factura)
-def crear_factura (cliente_id: int, datos_factura: FacturaCrear):
-    # Verificar que el cliente exista
+def crear_factura(cliente_id: int, datos_factura: FacturaCrear):
     cliente_encontrado = None
     for cliente in lista_clientes:
         if cliente.id == cliente_id:
@@ -77,10 +76,13 @@ def crear_factura (cliente_id: int, datos_factura: FacturaCrear):
     if not cliente_encontrado:
         raise HTTPException(status_code=400, detail="Cliente no encontrado")
     
-    factura_val = Factura.model_validate(datos_factura.model_dump())
+    datos_dict = datos_factura.model_dump()
+    datos_dict["fecha"] = datetime.now()
+    datos_dict["cliente"] = cliente_encontrado
+    datos_dict["transacciones"] = [] 
+
+    factura_val = Factura.model_validate(datos_dict)
     factura_val.id = len(lista_facturas) + 1
-    factura_val.fecha = datetime.now()
-    factura_val.cliente = cliente_encontrado
     lista_facturas.append(factura_val)
     return factura_val
 
