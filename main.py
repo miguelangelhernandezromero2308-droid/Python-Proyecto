@@ -86,6 +86,39 @@ def crear_factura(cliente_id: int, datos_factura: FacturaCrear):
     lista_facturas.append(factura_val)
     return factura_val
 
+@app.put("/facturas/{id}")
+def editar_factura(id: int, datos_factura: FacturaEditar):
+    factura_editada = None
+    
+    for indice, factura in enumerate(lista_facturas):
+        if factura.id == id:
+            datos_dict = datos_factura.model_dump()
+            datos_dict["fecha"] = factura.fecha
+            datos_dict["cliente"] = factura.cliente
+            datos_dict["transacciones"] = factura.transacciones
+            factura_editada = Factura.model_validate(datos_dict)
+            factura_editada.id = id  
+            lista_facturas[indice] = factura_editada
+            break
+            
+    if not factura_editada:
+        raise HTTPException(status_code=404, detail="Factura no encontrada para editar")
+        
+    return {"mensaje": "Factura editada correctamente", "factura": factura_editada}
+
+
+
+@app.delete("/facturas/{id}")
+def eliminar_factura(id: int):
+    for factura in lista_facturas:
+        if factura.id == id:
+            for transaccion in list(lista_transacciones):
+                if transaccion.factura_id == id:
+                    lista_transacciones.remove(transaccion)
+            lista_facturas.remove(factura)
+            return {"mensaje": "La factura y sus transacciones asociadas han sido eliminadas", "factura": factura}
+            
+    raise HTTPException(status_code=404, detail="Factura no encontrada para eliminar")
 
 #------------ endpoint de transacciones -------------
 

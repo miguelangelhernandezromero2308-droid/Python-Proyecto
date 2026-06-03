@@ -18,3 +18,5 @@
 - *2* se inicio con la CRUD de transacciones y factura, en la clase de factura se agrego el codigo para que se vea el valor total en la factura junto con el id del cliente, en la clase de transacciones se agrego el concepto, monto y descripccion, el monto ayudara para el valor total de la factura, se uso el metodo get para poder mirara las transacciones.
 - *3* se inicio con la CRUD de transacciones, empezando por el metodo get y post 
 - *4* se termino el metodo put y delete en la crud de transacciones
+- *5* se añadio el put y el delete de la crud de facturas
+
