@@ -19,4 +19,5 @@
 - *3* se inicio con la CRUD de transacciones, empezando por el metodo get y post 
 - *4* se termino el metodo put y delete en la crud de transacciones
 - *5* se añadio el put y el delete de la crud de facturas
+- *6* se creo el archivo gitignore y requirements.txt
 
