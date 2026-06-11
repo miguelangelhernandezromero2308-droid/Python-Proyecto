@@ -23,4 +23,5 @@
 - *7* se creo la estructura del proyecto
 - *8* se mpdifico el archivo listas_app.py
 - *9* se creo el enrutador de clientes y facturas
+- *10* se creo el enrutador de transacciones
 
