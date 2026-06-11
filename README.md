@@ -22,4 +22,5 @@
 - *6* se creo el archivo gitignore y requirements.txt
 - *7* se creo la estructura del proyecto
 - *8* se mpdifico el archivo listas_app.py
+- *9* se creo el enrutador de clientes y facturas
 
