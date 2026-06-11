@@ -1,8 +1,8 @@
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
-from modelos.cliente import Cliente, ClienteCrear, ClienteEditar
-from modelos.factura import Factura, FacturaCrear, FacturaEditar
-from modelos.transacciones import Transacciones, TransaccionesCrear, TransaccionesEditar
+from app.modelos.cliente import Cliente, ClienteCrear, ClienteEditar
+from app.modelos.factura import Factura, FacturaCrear, FacturaEditar
+from app.modelos.transacciones import Transacciones, TransaccionesCrear, TransaccionesEditar
 
 
 app = FastAPI()
@@ -11,14 +11,14 @@ lista_clientes: list[Cliente] = []
 lista_facturas: list[Factura] = []
 lista_transacciones: list[Transacciones] = []
 
-@app.get("/clientes")
+@app.get("/clientes", response_model=list[Cliente])
 async def Listar_clientes ():
     if len(lista_clientes) == 0:
         return {"clientes": "No hay clientes"}
     else:
         return {"clientes": lista_clientes}
 
-@app.get("/clientes/{id}")
+@app.get("/clientes/{id}", response_model=Cliente)
 async def listar_cliente (id:int):
     for Cliente in lista_clientes:
         if Cliente.id == id:

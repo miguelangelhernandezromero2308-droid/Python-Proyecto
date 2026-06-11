@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from modelos.cliente import ClienteBase
+from app.modelos.cliente import ClienteBase
 
 class TransaccionesBase(BaseModel):
     concepto: str

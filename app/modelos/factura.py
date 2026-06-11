@@ -1,7 +1,7 @@
 from pydantic import BaseModel, computed_field
 from datetime import datetime
-from modelos.cliente import Cliente
-from modelos.transacciones import Transacciones
+from app.modelos.cliente import Cliente
+from app.modelos.transacciones import Transacciones
 
 class FacturaBase(BaseModel):
     fecha: datetime | None = None
