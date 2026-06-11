@@ -3,13 +3,10 @@ from fastapi import FastAPI, HTTPException
 from app.modelos.cliente import Cliente, ClienteCrear, ClienteEditar
 from app.modelos.factura import Factura, FacturaCrear, FacturaEditar
 from app.modelos.transacciones import Transacciones, TransaccionesCrear, TransaccionesEditar
-
+from .listas_app import lista_clientes, lista_facturas, lista_transacciones
 
 app = FastAPI()
 
-lista_clientes: list[Cliente] = []
-lista_facturas: list[Factura] = []
-lista_transacciones: list[Transacciones] = []
 
 @app.get("/clientes", response_model=list[Cliente])
 async def Listar_clientes ():

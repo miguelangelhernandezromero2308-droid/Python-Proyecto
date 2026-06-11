@@ -21,4 +21,5 @@
 - *5* se añadio el put y el delete de la crud de facturas
 - *6* se creo el archivo gitignore y requirements.txt
 - *7* se creo la estructura del proyecto
+- *8* se mpdifico el archivo listas_app.py
 
