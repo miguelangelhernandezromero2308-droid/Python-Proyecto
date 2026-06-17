@@ -24,4 +24,6 @@
 - *8* se mpdifico el archivo listas_app.py
 - *9* se creo el enrutador de clientes y facturas
 - *10* se creo el enrutador de transacciones
+- *11* archivo con la conexion a bases de datos
+
 
