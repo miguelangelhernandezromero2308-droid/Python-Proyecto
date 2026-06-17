@@ -1,48 +1,70 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from app.modelos.cliente import Cliente, ClienteCrear, ClienteEditar
-from ..listas_app import lista_clientes
 from ..conexion_bd import Sesion_dependencia
 from sqlmodel import select
 
 ruta_clientes = APIRouter()
 
+# 1. LISTAR TODOS LOS CLIENTES
 @ruta_clientes.get("/clientes")
 async def listar_clientes(sesion: Sesion_dependencia):
     lista_cli = sesion.exec(select(Cliente)).all()
     return lista_cli
 
-@ruta_clientes.get("/clientes/{id}", response_model=Cliente, )
-async def listar_cliente (id:int, mi_sesion: Sesion_dependencia):
-    for Cliente in lista_clientes:
-        if Cliente.id == id:
-            return Cliente
+# 2. OBTENER UN CLIENTE POR ID
+@ruta_clientes.get("/clientes/{id}", response_model=Cliente)
+async def listar_cliente(id: int, mi_sesion: Sesion_dependencia):
+    # Buscamos el cliente en la base de datos por su ID
+    cliente_encontrado = mi_sesion.get(Cliente, id)
+    
+    # Si NO existe, lanzamos el error 404 inmediatamente para detener la ejecución
+    if cliente_encontrado is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Cliente no encontrado"
+        )
+    
+    # Si SÍ existe, retornamos el cliente encontrado
+    return cliente_encontrado
 
+# 3. CREAR CLIENTE
 @ruta_clientes.post("/clientes", response_model=Cliente)
-async def Crear_cliente (datos_cliente: ClienteCrear, mi_sesion: Sesion_dependencia):
-    #validar el cliente
+async def Crear_cliente(datos_cliente: ClienteCrear, mi_sesion: Sesion_dependencia):
     cliente_val = Cliente.model_validate(datos_cliente.model_dump())
-    #asignar un id al cliente autoincremental
     mi_sesion.add(cliente_val)
     mi_sesion.commit()
     mi_sesion.refresh(cliente_val)
     return cliente_val 
 
+# 4. EDITAR CLIENTE
 @ruta_clientes.put("/clientes/{id}")
-async def editar_cliente (id: int, datos_cliente: ClienteEditar):
-    for cliente in lista_clientes:
-        if cliente.id == id:
-            lista_clientes.remove(cliente)
-            # Validar los datos del cliente editado
-            cliente_editado = Cliente.model_validate(datos_cliente.model_dump())
-            # Asignar el mismo ID al cliente editado
-            cliente_editado.id = id
-            # Agregar el cliente editado a la lista de clientes
-            lista_clientes.append(cliente_editado)
-    return{"mensaje": "Cliente editado", "cliente": cliente_editado}
+async def editar_cliente(id: int, datos_cliente: ClienteEditar, mi_sesion: Sesion_dependencia):
+    cliente_bd = mi_sesion.get(Cliente, id)
+    if not cliente_bd:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Cliente no encontrado para editar"
+        )
+    
+    datos_nuevos = datos_cliente.model_dump(exclude_unset=True)
+    for llave, valor in datos_nuevos.items():
+        setattr(cliente_bd, llave, valor)
+    
+    mi_sesion.add(cliente_bd)
+    mi_sesion.commit()
+    mi_sesion.refresh(cliente_bd)
+    return {"mensaje": "Cliente editado", "cliente": cliente_bd}
 
+# 5. ELIMINAR CLIENTE
 @ruta_clientes.delete("/clientes/{id}")
-async def eliminar_cliente (id: int):
-    for cliente in lista_clientes:
-        if cliente.id == id:
-            lista_clientes.remove(cliente)
-    return{"mensaje": "el cliente ha sido eliminado correctamente", "cliente": cliente} 
+async def eliminar_cliente(id: int, mi_sesion: Sesion_dependencia):
+    cliente = mi_sesion.get(Cliente, id)
+    if not cliente:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Cliente no encontrado para eliminar"
+        )
+    
+    mi_sesion.delete(cliente)
+    mi_sesion.commit()
+    return {"mensaje": "El cliente ha sido eliminado correctamente", "cliente": cliente}
