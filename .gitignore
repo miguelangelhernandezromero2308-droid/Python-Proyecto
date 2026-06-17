@@ -1,6 +1,8 @@
 #no se debe incluir los entornos virtuales
 mi_env/
-
-#pycache
 __pycache__/
+*.pyc
+.env
 
+
+cambio_de_PC.txt

@@ -7,8 +7,9 @@ from .listas_app import lista_clientes, lista_facturas, lista_transacciones
 from .enrutador import clientes
 from .enrutador import facturas
 from .enrutador import transacciones
+from .conexion_bd import crear_tablas
 
-app = FastAPI()
+app = FastAPI(lifespan=crear_tablas)
 
 app.include_router(clientes.ruta_clientes, tags=["Clientes"])
 
