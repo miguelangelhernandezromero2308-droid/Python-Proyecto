@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from sqlmodel import SQLModel, Field, Relationship
 from typing import TYPE_CHECKING
 
-# Esto le dice a Python que solo importe Factura para revisión de código (Pylance), evitando el bucle
+
 if TYPE_CHECKING:
     from app.modelos.factura import Factura
 

@@ -31,5 +31,6 @@
 - *15* CRUD facturas en base de datos
 - *16* CRUD de transacciones en BD
 - *17* relaciones virtuales
+- *18* correccion de errores
 
 

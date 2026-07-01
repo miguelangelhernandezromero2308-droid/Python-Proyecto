@@ -8,18 +8,23 @@ from sqlalchemy.orm import joinedload
 ruta_facturas = APIRouter()
 
 
+# 1. LISTAR TODAS LAS FACTURAS
 @ruta_facturas.get("/facturas", response_model=list[FacturaPublica])
 async def listar_facturas(sesion: Sesion_dependencia):
-    # Traemos tanto las transacciones como el cliente asociado
-    declaracion = select(Factura).options(joinedload(Factura.transacciones), joinedload(Factura.cliente))
-    return sesion.exec(declaracion).all()
+    declaracion = select(Factura).options(
+        joinedload(Factura.cliente),
+        joinedload(Factura.transacciones)
+    )
+    
+    resultado = sesion.exec(declaracion).unique().all()
+    return resultado
 
-
+# 2. OBTENER UNA FACTURA POR ID
 @ruta_facturas.get("/facturas/{id}", response_model=FacturaPublica)
 async def obtener_factura(id: int, sesion: Sesion_dependencia):
     declaracion = select(Factura).where(Factura.id == id).options(
-        joinedload(Factura.transacciones), 
-        joinedload(Factura.cliente)
+        joinedload(Factura.cliente),
+        joinedload(Factura.transacciones)
     )
     factura = sesion.exec(declaracion).first()
     
@@ -66,7 +71,7 @@ async def eliminar_factura(id: int, sesion: Sesion_dependencia):
     if not factura:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada para eliminar")
     
-    # Gracias a la relación virtual, podemos borrar las transacciones asociadas de forma limpia
+   
     for transaccion in factura.transacciones:
         sesion.delete(transaccion)
         

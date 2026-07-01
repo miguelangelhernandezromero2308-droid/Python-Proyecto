@@ -22,7 +22,7 @@ async def obtener_transaccion(id: int, sesion: Sesion_dependencia):
 # 3. CREAR TRANSACCIÓN (Validando que la factura exista primero)
 @ruta_transacciones.post("/transacciones", response_model=Transacciones)
 async def crear_transaccion(datos_transaccion: TransaccionesCrear, sesion: Sesion_dependencia):
-    # Verificamos si la factura a la que se le quiere asignar la transacción existe en la BD
+   
     factura_bd = sesion.get(Factura, datos_transaccion.factura_id)
     if not factura_bd:
         raise HTTPException(
@@ -30,7 +30,6 @@ async def crear_transaccion(datos_transaccion: TransaccionesCrear, sesion: Sesio
             detail=f"No se puede crear la transacción porque la factura con ID {datos_transaccion.factura_id} no existe"
         )
         
-    # Validamos y mapeamos los esquemas correctamente con SQLModel
     transaccion_val = Transacciones.model_validate(datos_transaccion.model_dump())
     
     sesion.add(transaccion_val)

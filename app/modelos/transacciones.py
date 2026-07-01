@@ -19,5 +19,5 @@ class Transacciones(TransaccionesBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     factura_id: int | None = Field(default=None, foreign_key="factura.id")
     
-    # Relación virtual apuntando correctamente con comillas
+    
     factura: "Factura" = Relationship(back_populates="transacciones")

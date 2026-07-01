@@ -14,17 +14,16 @@ async def listar_clientes(sesion: Sesion_dependencia):
 # 2. OBTENER UN CLIENTE POR ID
 @ruta_clientes.get("/clientes/{id}", response_model=Cliente)
 async def listar_cliente(id: int, mi_sesion: Sesion_dependencia):
-    # Buscamos el cliente en la base de datos por su ID
+    
     cliente_encontrado = mi_sesion.get(Cliente, id)
     
-    # Si NO existe, lanzamos el error 404 inmediatamente para detener la ejecución
     if cliente_encontrado is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Cliente no encontrado"
         )
     
-    # Si SÍ existe, retornamos el cliente encontrado
+    
     return cliente_encontrado
 
 # 3. CREAR CLIENTE
