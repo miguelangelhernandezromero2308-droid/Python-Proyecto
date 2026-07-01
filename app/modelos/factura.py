@@ -1,11 +1,16 @@
 from pydantic import BaseModel, computed_field
-from sqlmodel import SQLModel, Field, Session, select
+from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
-from app.modelos.transacciones import Transacciones
-from app.conexion_bd import motor_db
+from typing import TYPE_CHECKING
+
+# Importamos ClienteBase para poder usarlo en el esquema público sin romper el TYPE_CHECKING
+from app.modelos.cliente import ClienteBase 
+
+if TYPE_CHECKING:
+    from app.modelos.cliente import Cliente
+    from app.modelos.transacciones import Transacciones
 
 class FacturaBase(SQLModel):
-    # Usamos datetime para manejar la fecha de manera correcta en la base de datos
     fecha: datetime = Field(default_factory=datetime.now)
 
 class FacturaCrear(BaseModel):
@@ -14,21 +19,25 @@ class FacturaCrear(BaseModel):
 class FacturaEditar(FacturaBase):
     pass
 
+
+class FacturaPublica(FacturaBase):
+    id: int
+    cliente_id: int | None
+    valor_total: float
+    
+    cliente: ClienteBase | None = None 
+
 class Factura(FacturaBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     cliente_id: int | None = Field(default=None, foreign_key="cliente.id")
+    
+    
+    cliente: "Cliente" = Relationship(back_populates="facturas")
+    transacciones: list["Transacciones"] = Relationship(back_populates="factura")
 
-    # Calculamos el valor total buscando manualmente en la BD sin usar Relationship
     @computed_field
     @property
     def valor_total(self) -> float:
-        if self.id is None:
+        if not self.transacciones:
             return 0.0
-        
-        # Abrimos una sesión rápida para consultar la tabla de transacciones
-        with Session(motor_db) as sesion_interna:
-            declaracion = select(Transacciones).where(Transacciones.factura_id == self.id)
-            transacciones_factura = sesion_interna.exec(declaracion).all()
-            
-            # Sumamos cantidad por valor unitario (puedes cambiar 'vr_unitario' por 'monto' si tu tabla usa esa columna)
-            return sum(t.Cantidad * t.vr_unitario for t in transacciones_factura)
+        return sum(t.Cantidad * t.vr_unitario for t in self.transacciones)

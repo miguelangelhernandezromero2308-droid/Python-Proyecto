@@ -1,24 +1,31 @@
 from fastapi import APIRouter, HTTPException, status
-from app.modelos.factura import Factura, FacturaCrear, FacturaEditar
+from app.modelos.factura import Factura, FacturaCrear, FacturaEditar, FacturaPublica
 from app.modelos.cliente import Cliente
 from ..conexion_bd import Sesion_dependencia
 from sqlmodel import select
+from sqlalchemy.orm import joinedload
 
 ruta_facturas = APIRouter()
 
-# 1. LISTAR TODAS LAS FACTURAS
-@ruta_facturas.get("/facturas", response_model=list[Factura])
-async def listar_facturas(sesion: Sesion_dependencia):
-    # Al retornar la lista, FastAPI ejecutará el @computed_field para cada factura automáticamente
-    return sesion.exec(select(Factura)).all()
 
-# 2. OBTENER UNA FACTURA POR ID
-@ruta_facturas.get("/facturas/{id}", response_model=Factura)
+@ruta_facturas.get("/facturas", response_model=list[FacturaPublica])
+async def listar_facturas(sesion: Sesion_dependencia):
+    # Traemos tanto las transacciones como el cliente asociado
+    declaracion = select(Factura).options(joinedload(Factura.transacciones), joinedload(Factura.cliente))
+    return sesion.exec(declaracion).all()
+
+
+@ruta_facturas.get("/facturas/{id}", response_model=FacturaPublica)
 async def obtener_factura(id: int, sesion: Sesion_dependencia):
-    factura = sesion.get(Factura, id)
+    declaracion = select(Factura).where(Factura.id == id).options(
+        joinedload(Factura.transacciones), 
+        joinedload(Factura.cliente)
+    )
+    factura = sesion.exec(declaracion).first()
+    
     if not factura:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
-    return factura  # Aquí ya se incluye el 'valor_total' calculado desde el modelo
+    return factura
 
 # 3. CREAR FACTURA ASOCIADA A UN CLIENTE
 @ruta_facturas.post("/facturas/{cliente_id}", response_model=Factura)
@@ -30,9 +37,7 @@ async def crear_factura(cliente_id: int, datos_factura: FacturaCrear, sesion: Se
     datos_dict = datos_factura.model_dump()
     datos_dict["cliente_id"] = cliente_id
     
-    # Validación con model_validate
     factura_val = Factura.model_validate(datos_dict)
-    
     sesion.add(factura_val)
     sesion.commit()
     sesion.refresh(factura_val)
@@ -61,10 +66,8 @@ async def eliminar_factura(id: int, sesion: Sesion_dependencia):
     if not factura:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada para eliminar")
     
-    # Buscamos y eliminamos las transacciones asociadas a mano en la BD antes de borrar la factura
-    from app.modelos.transacciones import Transacciones
-    transacciones_asociadas = sesion.exec(select(Transacciones).where(Transacciones.factura_id == id)).all()
-    for transaccion in transacciones_asociadas:
+    # Gracias a la relación virtual, podemos borrar las transacciones asociadas de forma limpia
+    for transaccion in factura.transacciones:
         sesion.delete(transaccion)
         
     sesion.delete(factura)

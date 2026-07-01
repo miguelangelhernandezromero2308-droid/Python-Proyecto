@@ -30,4 +30,6 @@
 - *14* tablas y relaciones 
 - *15* CRUD facturas en base de datos
 - *16* CRUD de transacciones en BD
+- *17* relaciones virtuales
+
 
