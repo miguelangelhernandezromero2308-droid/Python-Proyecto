@@ -9,7 +9,7 @@ ruta_transacciones = APIRouter()
 
 
 @ruta_transacciones.get("/transacciones", response_model=list[Transacciones])
-def listar_transacciones ():
+async def listar_transacciones ():
     return lista_transacciones
 
 

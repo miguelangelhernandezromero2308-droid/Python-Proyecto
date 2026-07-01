@@ -1,71 +1,76 @@
-from fastapi import APIRouter, HTTPException
-from datetime import datetime
-from ..listas_app import lista_facturas, lista_clientes, lista_transacciones
+from fastapi import APIRouter, HTTPException, status
 from app.modelos.factura import Factura, FacturaCrear, FacturaEditar
-import app
+from app.modelos.cliente import Cliente
+from app.modelos.transacciones import Transacciones
+from ..conexion_bd import Sesion_dependencia
+from sqlmodel import select
 
 ruta_facturas = APIRouter()
 
+# 1. LISTAR TODAS LAS FACTURAS
 @ruta_facturas.get("/facturas", response_model=list[Factura])
-def listar_facturas ():
-    return lista_facturas
+async def listar_facturas(sesion: Sesion_dependencia):
+    lista_fac = sesion.exec(select(Factura)).all()
+    return lista_fac
 
+# 2. OBTENER UNA FACTURA POR ID
 @ruta_facturas.get("/facturas/{id}")
-def listar_factura (id: int):
-    for factura in lista_facturas:
-        if factura.id == id:
-            return factura
-        
+async def obtener_factura(id: int, sesion: Sesion_dependencia):
+    factura = sesion.get(Factura, id)
+    if not factura:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada")
+    
+    # Calcular el valor_total sumando las transacciones de esta factura de la BD
+    transacciones_fac = sesion.exec(select(Transacciones).where(Transacciones.factura_id == id)).all()
+    total = sum(t.Cantidad * t.vr_unitario for t in transacciones_fac)
+    
+    # Retornamos los datos planos más el valor calculado dinámico
+    resultado = factura.model_dump()
+    resultado["valor_total"] = total
+    return resultado
+
+# 3. CREAR FACTURA ASOCIADA A UN CLIENTE
 @ruta_facturas.post("/facturas/{cliente_id}", response_model=Factura)
-def crear_factura(cliente_id: int, datos_factura: FacturaCrear):
-    cliente_encontrado = None
-    for cliente in lista_clientes:
-        if cliente.id == cliente_id:
-            cliente_encontrado = cliente
-            break
-    if not cliente_encontrado:
-        raise HTTPException(status_code=400, detail="Cliente no encontrado")
+async def crear_factura(cliente_id: int, datos_factura: FacturaCrear, sesion: Sesion_dependencia):
+    # Validar que el cliente exista en la base de datos
+    cliente_bd = sesion.get(Cliente, cliente_id)
+    if not cliente_bd:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cliente no encontrado")
     
-    datos_dict = datos_factura.model_dump()
-    datos_dict["fecha"] = datetime.now()
-    datos_dict["cliente"] = cliente_encontrado
-    datos_dict["transacciones"] = [] 
+    nueva_factura = Factura(cliente_id=cliente_id)
+    sesion.add(nueva_factura)
+    sesion.commit()
+    sesion.refresh(nueva_factura)
+    return nueva_factura
 
-    factura_val = Factura.model_validate(datos_dict)
-    factura_val.id = len(lista_facturas) + 1
-    lista_facturas.append(factura_val)
-    return factura_val
-
+# 4. EDITAR FACTURA
 @ruta_facturas.put("/facturas/{id}")
-def editar_factura(id: int, datos_factura: FacturaEditar):
-    factura_editada = None
+async def editar_factura(id: int, datos_factura: FacturaEditar, sesion: Sesion_dependencia):
+    factura_bd = sesion.get(Factura, id)
+    if not factura_bd:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada para editar")
     
-    for indice, factura in enumerate(lista_facturas):
-        if factura.id == id:
-            datos_dict = datos_factura.model_dump()
-            datos_dict["fecha"] = factura.fecha
-            datos_dict["cliente"] = factura.cliente
-            datos_dict["transacciones"] = factura.transacciones
-            factura_editada = Factura.model_validate(datos_dict)
-            factura_editada.id = id  
-            lista_facturas[indice] = factura_editada
-            break
-            
-    if not factura_editada:
-        raise HTTPException(status_code=404, detail="Factura no encontrada para editar")
+    datos_nuevos = datos_factura.model_dump(exclude_unset=True)
+    for llave, valor in datos_nuevos.items():
+        setattr(factura_bd, llave, valor)
         
-    return {"mensaje": "Factura editada correctamente", "factura": factura_editada}
+    sesion.add(factura_bd)
+    sesion.commit()
+    sesion.refresh(factura_bd)
+    return {"mensaje": "Factura editada correctamente", "factura": factura_bd}
 
-
-
+# 5. ELIMINAR FACTURA y sus transacciones asociadas
 @ruta_facturas.delete("/facturas/{id}")
-def eliminar_factura(id: int):
-    for factura in lista_facturas:
-        if factura.id == id:
-            for transaccion in list(lista_transacciones):
-                if transaccion.factura_id == id:
-                    lista_transacciones.remove(transaccion)
-            lista_facturas.remove(factura)
-            return {"mensaje": "La factura y sus transacciones asociadas han sido eliminadas", "factura": factura}
-            
-    raise HTTPException(status_code=404, detail="Factura no encontrada para eliminar")
+async def eliminar_factura(id: int, sesion: Sesion_dependencia):
+    factura = sesion.get(Factura, id)
+    if not factura:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada para eliminar")
+    
+    # Eliminar transacciones que dependan de esta factura primero
+    transacciones_asociadas = sesion.exec(select(Transacciones).where(Transacciones.factura_id == id)).all()
+    for transaccion in transacciones_asociadas:
+        sesion.delete(transaccion)
+        
+    sesion.delete(factura)
+    sesion.commit()
+    return {"mensaje": "La factura y sus transacciones asociadas han sido eliminadas correctamente"}

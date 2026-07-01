@@ -28,4 +28,5 @@
 - *12* agrego la conexion a base de datos sqlite, cliente(listar y crear)
 - *13* CRUD completa de clientes en la base de datos
 - *14* tablas y relaciones 
+- *15* CRUD facturas en base de datos
 
