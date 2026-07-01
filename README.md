@@ -29,4 +29,5 @@
 - *13* CRUD completa de clientes en la base de datos
 - *14* tablas y relaciones 
 - *15* CRUD facturas en base de datos
+- *16* CRUD de transacciones en BD
 

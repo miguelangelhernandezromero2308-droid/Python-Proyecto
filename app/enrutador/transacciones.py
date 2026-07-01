@@ -1,93 +1,66 @@
-import app
-from fastapi import APIRouter, HTTPException
-from datetime import datetime
+from fastapi import APIRouter, HTTPException, status
 from app.modelos.transacciones import Transacciones, TransaccionesCrear, TransaccionesEditar
-from ..listas_app import lista_facturas, lista_transacciones
-
+from app.modelos.factura import Factura
+from ..conexion_bd import Sesion_dependencia
+from sqlmodel import select
 
 ruta_transacciones = APIRouter()
 
-
+# 1. LISTAR TODAS LAS TRANSACCIONES
 @ruta_transacciones.get("/transacciones", response_model=list[Transacciones])
-async def listar_transacciones ():
-    return lista_transacciones
+async def listar_transacciones(sesion: Sesion_dependencia):
+    return sesion.exec(select(Transacciones)).all()
 
-
-
+# 2. OBTENER UNA TRANSACCIÓN POR ID
 @ruta_transacciones.get("/transacciones/{id}", response_model=Transacciones)
-def obtener_transaccion(id: int):
-    for transaccion in lista_transacciones:
-        if transaccion.id == id:
-            return transaccion
-    raise HTTPException(status_code=404, detail="Transacción no encontrada")
+async def obtener_transaccion(id: int, sesion: Sesion_dependencia):
+    transaccion = sesion.get(Transacciones, id)
+    if not transaccion:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+    return transaccion
 
-
-
+# 3. CREAR TRANSACCIÓN (Validando que la factura exista primero)
 @ruta_transacciones.post("/transacciones", response_model=Transacciones)
-def crear_transaccion(datos_transaccion: TransaccionesCrear):
-    factura_encontrada = None
-    for factura in lista_facturas:
-        if factura.id == datos_transaccion.factura_id:
-            factura_encontrada = factura
-            break
-            
-    if not factura_encontrada:
-        raise HTTPException(status_code=404, detail="La factura especificada no existe")
-    nueva_transaccion = Transacciones.model_validate(datos_transaccion.model_dump())
-    nueva_transaccion.id = len(lista_transacciones) + 1
-    lista_transacciones.append(nueva_transaccion)
-    factura_encontrada.transacciones.append(nueva_transaccion)
+async def crear_transaccion(datos_transaccion: TransaccionesCrear, sesion: Sesion_dependencia):
+    # Verificamos si la factura a la que se le quiere asignar la transacción existe en la BD
+    factura_bd = sesion.get(Factura, datos_transaccion.factura_id)
+    if not factura_bd:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"No se puede crear la transacción porque la factura con ID {datos_transaccion.factura_id} no existe"
+        )
+        
+    # Validamos y mapeamos los esquemas correctamente con SQLModel
+    transaccion_val = Transacciones.model_validate(datos_transaccion.model_dump())
     
-    return nueva_transaccion
+    sesion.add(transaccion_val)
+    sesion.commit()
+    sesion.refresh(transaccion_val)
+    return transaccion_val
 
-
-
+# 4. EDITAR TRANSACCIÓN
 @ruta_transacciones.put("/transacciones/{id}")
-def editar_transaccion(id: int, datos_transaccion: TransaccionesEditar):
-    transaccion_editada = None
-    
-    for indice, transaccion in enumerate(lista_transacciones):
-        if transaccion.id == id:
-            transaccion_editada = Transacciones.model_validate(datos_transaccion.model_dump())
-            transaccion_editada.id = id
-            transaccion_editada.factura_id = transaccion.factura_id
-            
-            lista_transacciones[indice] = transaccion_editada
-            break
-            
-    if not transaccion_editada:
-        raise HTTPException(status_code=404, detail="Transacción no encontrada para editar")
-    for factura in lista_facturas:
-        if factura.id == transaccion_editada.factura_id:
-            for indice_t, t_factura in enumerate(factura.transacciones):
-                if t_factura.id == id:
-                    factura.transacciones[indice_t] = transaccion_editada
-                    break
-            break
+async def editar_transaccion(id: int, datos_transaccion: TransaccionesEditar, sesion: Sesion_dependencia):
+    transaccion_bd = sesion.get(Transacciones, id)
+    if not transaccion_bd:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada para editar")
+        
+    datos_nuevos = datos_transaccion.model_dump(exclude_unset=True)
+    for llave, valor in datos_nuevos.items():
+        setattr(transaccion_bd, llave, valor)
+        
+    sesion.add(transaccion_bd)
+    sesion.commit()
+    sesion.refresh(transaccion_bd)
+    return {"mensaje": "Transacción editada correctamente", "transaccion": transaccion_bd}
 
-    return {"mensaje": "Transacción editada correctamente", "transaccion": transaccion_editada}
-
-
-
+# 5. ELIMINAR TRANSACCIÓN
 @ruta_transacciones.delete("/transacciones/{id}")
-def eliminar_transaccion(id: int):
-    transaccion_a_eliminar = None
-
-    for transaccion in lista_transacciones:
-        if transaccion.id == id:
-            transaccion_a_eliminar = transaccion
-            lista_transacciones.remove(transaccion)
-            break
-            
-    if not transaccion_a_eliminar:
-        raise HTTPException(status_code=404, detail="Transacción no encontrada para eliminar")
-    
-    for factura in lista_facturas:
-        if factura.id == transaccion_a_eliminar.factura_id:
-            for t_factura in factura.transacciones:
-                if t_factura.id == id:
-                    factura.transacciones.remove(t_factura)
-                    break
-            break
-            
-    return {"mensaje": "La transacción ha sido eliminada", "transaccion": transaccion_a_eliminar}
+async def eliminar_transaccion(id: int, sesion: Sesion_dependencia):
+    transaccion = sesion.get(Transacciones, id)
+    if not transaccion:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada para eliminar")
+        
+    sesion.delete(transaccion)
+    sesion.commit()
+    return {"mensaje": "La transacción ha sido eliminada correctamente", "transaccion": transaccion}
