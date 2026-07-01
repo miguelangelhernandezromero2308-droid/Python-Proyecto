@@ -25,5 +25,7 @@
 - *9* se creo el enrutador de clientes y facturas
 - *10* se creo el enrutador de transacciones
 - *11* archivo con la conexion a bases de datos
-
+- *12* agrego la conexion a base de datos sqlite, cliente(listar y crear)
+- *13* CRUD completa de clientes en la base de datos
+- *14* tablas y relaciones 
 
