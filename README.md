@@ -32,5 +32,5 @@
 - *16* CRUD de transacciones en BD
 - *17* relaciones virtuales
 - *18* correccion de errores
-
+- *19*-fin
 
